@@ -23,10 +23,6 @@ class GameState(enum.Enum):
 
 
 
-
-
-
-
 pygame.init()
 pygame.font.init()
 
@@ -37,31 +33,41 @@ clock = pygame.time.Clock()
 class Alien(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = pygame.transform.scale_by(pygame.image.load('pic/alien.png').convert_alpha(), 1)
-        self.rect = self.image.get_rect(bottomleft=(alien_min_x+50, path_y_pos - 300))  # x, y initial position
 
+        scale = 2
+        img1 = pygame.transform.scale_by(pygame.image.load('pic/run/1.png').convert_alpha(), scale)
+        img2 = pygame.transform.scale_by(pygame.image.load('pic/run/2.png').convert_alpha(), scale)
+        img3 = pygame.transform.scale_by(pygame.image.load('pic/run/3.png').convert_alpha(), scale)
+        img4 = pygame.transform.scale_by(pygame.image.load('pic/run/4.png').convert_alpha(), scale)
+        img5 = pygame.transform.scale_by(pygame.image.load('pic/run/5.png').convert_alpha(), scale)
+        img6 = pygame.transform.scale_by(pygame.image.load('pic/run/6.png').convert_alpha(), scale)
+
+        self.run_img_list = [img1, img2, img3, img4, img5, img6]
+
+        #self.image = pygame.transform.scale_by(pygame.image.load('pic/alien.png').convert_alpha(), 1)
+        self.image = self.run_img_list[0]
+        self.rect = self.image.get_rect(bottomleft=(alien_min_x, path_y_pos - 300))  # x, y initial position
+
+        self.alien_dir_r = True
         self.last_alien_dir_r = True
+
         self.alien_speed = 0
         self.alien_y_pos = 0
-        #self.alien_dir_r = True
-        print("sprite init")
+
+        self.keys = pygame.key.get_pressed()
+        self.move_picture = 0
+
+        self.global_speed_factor = 0
+
+        print("Alien sprite init")
 
 
     def inputs(self):
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN: # jump button handling
-                keys = pygame.key.get_pressed()
-                if ((keys[pygame.K_SPACE] == True) and (self.rect.bottom == path_y_pos)):
-                    self.alien_y_pos = jump_power
+        self.keys = pygame.key.get_pressed()
 
     def move(self):
-        # alien movement:
-        # x-axis:
-        alien_dir_r = self.last_alien_dir_r
-
-        keys = pygame.key.get_pressed()
-        if (keys[pygame.K_LEFT] == True):
-            alien_dir_r = False
+        if (self.keys[pygame.K_LEFT] == True):
+            self.alien_dir_r = False
             self.alien_speed -= alien_speed_change
             if self.alien_speed < (-alien_max_speed) : self.alien_speed = (-alien_max_speed)
         else:
@@ -69,8 +75,8 @@ class Alien(pygame.sprite.Sprite):
                 self.alien_speed += alien_speed_change
                 if self.alien_speed > 0: self.alien_speed = 0
 
-        if (keys[pygame.K_RIGHT] == True):
-            alien_dir_r = True
+        if (self.keys [pygame.K_RIGHT] == True):
+            self.alien_dir_r = True
             self.alien_speed += alien_speed_change
             if self.alien_speed > alien_max_speed: self.alien_speed = alien_max_speed
         else:
@@ -81,38 +87,51 @@ class Alien(pygame.sprite.Sprite):
         self.rect.centerx += self.alien_speed
         if (self.rect.centerx > alien_max_x) :
             self.rect.centerx = alien_max_x
-            #global_speed_factor = -alien_speed
+            self.global_speed_factor = -self.alien_speed
         elif (self.rect.centerx < alien_min_x):
             self.rect.centerx = alien_min_x
-            #global_speed_factor = -alien_speed
+            self.global_speed_factor  = -self.alien_speed
         else:
-            #global_speed_factor = 0
-            pass
+            self.global_speed_factor = 0
 
-        # y-axis:
+    def jump(self):
+        if ((self.keys[pygame.K_SPACE] == True) and (self.rect.bottom == path_y_pos)):
+            self.alien_y_pos = jump_power
+
         self.rect.y += self.alien_y_pos
         if self.rect.bottom >= path_y_pos:
             self.rect.bottom = path_y_pos
         else:
             self.alien_y_pos += 1
 
-            #direction
+    def animate(self):
+        #print('alien speed', self.alien_speed)
 
-        if (self.last_alien_dir_r != alien_dir_r):
-            self.last_alien_dir_r = alien_dir_r
-            self.image = pygame.transform.flip(self.image , True, False)
-            #print('alien r:', alien_dir_r,  last_alien_dir_r)
+        if self.rect.bottom < path_y_pos:   # if jump tbd
+            self.image = self.run_img_list[0]
+        elif (self.alien_speed == 0):       # if speed 0 tbd
+            self.image = self.run_img_list[0]
+        else:
+            self.move_picture += 0.2       # if run
+            if (self.move_picture > len(self.run_img_list)): self.move_picture = 0
+            self.image = self.run_img_list[int(self.move_picture)]
+
+        if (self.alien_dir_r == False):
+            self.image = pygame.transform.flip(self.image, True, False)
 
     def update(self):
         self.inputs()
         self.move()
+        self.animate()
+        self.jump()
+
+    def get_speed_factor(self):
+        return self.global_speed_factor
 
 
-
-
-alien_sprite = pygame.sprite.GroupSingle(Alien())
-alien_sprite.add(Alien())
-
+alien_sprite = pygame.sprite.GroupSingle()
+alien = Alien()
+alien_sprite.add(alien)
 
 backg_surf = pygame.transform.scale(pygame.image.load('pic/background1.jpg').convert_alpha(), main_res)
 backg_rect = backg_surf.get_rect(topleft = (0,0))
@@ -122,8 +141,6 @@ backg_dark_rect = backg_dark_surf.get_rect(topleft = (0,0))
 
 path_rect = pygame.Rect(0,path_y_pos,x,y)
 
-alien_surf = pygame.transform.scale_by(pygame.image.load('pic/alien.png').convert_alpha(), 1)
-alien_rect = alien_surf.get_rect(bottomleft = (alien_min_x, path_y_pos-300)) # x, y initial position
 
 snail_surf = pygame.transform.scale_by(pygame.image.load('pic/snail.png').convert_alpha(), 0.9)
 snail_rect = snail_surf.get_rect(bottomleft = (x, 420)) # x, y initial position
@@ -168,8 +185,7 @@ def reset():
     global game_main_loop
     global game_state
 
-    alien_surf = pygame.transform.scale_by(pygame.image.load('pic/alien.png').convert_alpha(), 1)
-    alien_rect.bottomleft = (alien_min_x, path_y_pos - 300)
+
     snail_rect.bottomleft = (x, 420)
     score = 0
     alien_xpos = 0
@@ -241,68 +257,10 @@ def GameRun():
         if event.type == pygame.QUIT:
             game_state = GameState.END
 
-        if event.type == pygame.KEYDOWN: # jump button handling
-            keys = pygame.key.get_pressed()
-            if ((keys[pygame.K_SPACE] == True) and (alien_rect.bottom == path_y_pos)):
-                alien_xpos = jump_power
-    # events handling end
-
-    # alien movement:
-        # x-axis:
-    keys = pygame.key.get_pressed()
-    if (keys[pygame.K_LEFT] == True):
-        alien_dir_r = False
-        alien_speed -= alien_speed_change
-        if alien_speed < (-alien_max_speed) : alien_speed = (-alien_max_speed)
-    else:
-        if(alien_speed < 0):
-            alien_speed += alien_speed_change
-            if alien_speed > 0: alien_speed = 0
-
-    if (keys[pygame.K_RIGHT] == True):
-        alien_dir_r = True
-        alien_speed += alien_speed_change
-        if alien_speed > alien_max_speed: alien_speed = alien_max_speed
-    else:
-        if(alien_speed > 0):
-            alien_speed -= alien_speed_change
-            if alien_speed < 0: alien_speed = 0
-
-    alien_rect.centerx += alien_speed
-    if (alien_rect.centerx > alien_max_x) :
-        alien_rect.centerx = alien_max_x
-        global_speed_factor = -alien_speed
-    elif (alien_rect.centerx < alien_min_x):
-        alien_rect.centerx = alien_min_x
-        global_speed_factor = -alien_speed
-    else:
-        global_speed_factor = 0
-
-        # y-axis:
-    alien_rect.y += alien_xpos
-    if alien_rect.bottom >= path_y_pos:
-        alien_rect.bottom = path_y_pos
-    else:
-        alien_xpos += 1
-
-        #direction
-
-    if (last_alien_dir_r != alien_dir_r):
-        last_alien_dir_r = alien_dir_r
-        alien_surf = pygame.transform.flip(alien_surf, True, False)
-        print('alien r:', alien_dir_r,  last_alien_dir_r)
-
-    # alien movement end
 
 
-    # alien collision detection
-    if alien_rect.colliderect(snail_rect):
-        if (colision_detected == False):
-            colision_detected = True
-            game_state = GameState.LOST
-    else:
-        colision_detected = False
-    # alien collision detection end
+
+    global_speed_factor = alien.get_speed_factor()
 
     # snail movement
     snail_speed = default_snail_speed + (score/10) # score snail speed factor
@@ -355,12 +313,13 @@ def GameRun():
     alien_sprite.update()
     alien_sprite.draw(screen)
 
-    screen.blit(alien_surf, alien_rect)
+    #screen.blit(alien_surf, alien_rect)
     screen.blit(snail_surf, snail_rect)
 
     pygame.display.flip()
 
     dt = clock.tick(display_freq)
+    pygame.display.set_caption(f'Runner     FPS:{1000/dt:.1f}')
 
 
 
